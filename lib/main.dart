@@ -28,11 +28,11 @@ class _MyAppState extends State<MyApp> {
     if (!mounted) return;
 
     setState(() {
-      scanResult = ScanResult(barcodeScanRes);
+      scanResult = ScanResult(barcodeScanRes == "-1" ? null : barcodeScanRes);
     });
   }
 
-  var scanResult = ScanResult(gs1);
+  var scanResult = const ScanResult(null);
 
   @override
   Widget build(BuildContext context) {
