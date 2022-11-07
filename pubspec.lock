@@ -84,9 +84,11 @@ packages:
   gs1decoder:
     dependency: "direct main"
     description:
-      path: "../gs1decoder"
-      relative: true
-    source: path
+      path: "."
+      ref: master
+      resolved-ref: "6b296869929d9e37f8cdab44f95b1cd149bc5c46"
+      url: "https://github.com/Keaze/gs1decoder.git"
+    source: git
     version: "1.0.0"
   lints:
     dependency: transitive

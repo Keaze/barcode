@@ -32,7 +32,9 @@ dependencies:
   flutter:
     sdk: flutter
   gs1decoder:
-      path: ../gs1decoder
+    git:
+      url: https://github.com/Keaze/gs1decoder.git
+      ref: master # branch name
 
 
   # The following adds the Cupertino Icons font to your application.
