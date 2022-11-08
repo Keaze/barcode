@@ -1,12 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:gs1decoder/gs1decoder.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 const gs1 = "]C10198032685692596320200253211170124100170242117008382";
-void main() => runApp(const MyApp());
+void main() => runApp(const MaterialApp(home: MyApp()));
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -16,28 +13,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  Future<void> scanBarcodeNormal() async {
-    String barcodeScanRes;
-    try {
-      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode(
-          '#ff6666', 'Cancel', true, ScanMode.BARCODE);
-      print(barcodeScanRes);
-    } on PlatformException {
-      barcodeScanRes = 'Failed to get platform version.';
-    }
-    if (!mounted) return;
-
-    setState(() {
-      scanResult = ScanResult(barcodeScanRes == "-1" ? null : barcodeScanRes);
-    });
-  }
-
   var scanResult = const ScanResult(null);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-        home: Scaffold(
+    return Scaffold(
       appBar: AppBar(title: const Text('Barcode scan')),
       body: Container(alignment: Alignment.center, child: scanResult),
       floatingActionButton: FloatingActionButton(
@@ -46,7 +26,14 @@ class _MyAppState extends State<MyApp> {
           Icons.camera_alt,
           color: Colors.blue,
         ),
-        onPressed: () => scanBarcodeNormal(),
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => Test((barcode) =>
+                  setState(() => scanResult = ScanResult(barcode))),
+            ),
+          );
+        },
       ),
       bottomNavigationBar: const BottomAppBar(
           elevation: 20,
@@ -56,12 +43,12 @@ class _MyAppState extends State<MyApp> {
             height: 50,
           )),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-    ));
+    );
   }
 }
 
 class ScanResult extends StatelessWidget {
-  final String? scan;
+  final Barcode? scan;
   const ScanResult(
     this.scan, {
     Key? key,
@@ -72,15 +59,7 @@ class ScanResult extends StatelessWidget {
     return scan != null ? buildResult(scan!) : const Text("No Scan");
   }
 
-  Widget buildResult(String gs1) {
-    var decoder = GS1Decoder(GS1Config.create(fnc1: "]C1", gs: ""));
-    var result = decoder.decodeGS1Barcode(gs1);
-    var data = result.data.map(
-        (e) => Text("${e.ai.description} \n ID: ${e.ai.id} Value: ${e.value}"));
-    var errors = result.error.map((e) =>
-        Text("${e.error.name} \n ${"${e.ai?.id ?? "Rest"}:"}${e.restGs1}"));
-
-    final color = result.successful ? Colors.green : Colors.red;
+  Widget buildResult(Barcode bc) {
     return Wrap(
       direction: Axis.vertical,
       alignment: WrapAlignment.center,
@@ -88,20 +67,81 @@ class ScanResult extends StatelessWidget {
       spacing: 5,
       children: [
         Text(
-          gs1,
-          style: TextStyle(backgroundColor: color),
+          "Format: ${bc.format.name.toUpperCase()}",
+          style: const TextStyle(fontSize: 15),
         ),
-        const Text(
-          "Data:",
-          style: TextStyle(fontSize: 20),
-        ),
-        ...data,
-        const Text(
-          "Errors",
-          style: TextStyle(fontSize: 20),
-        ),
-        ...errors,
+        Text(bc.rawValue ?? "Empty"),
+        ...getBarcodeParsingResult(bc),
       ],
+    );
+  }
+}
+
+List<Widget> getBarcodeParsingResult(Barcode bc) {
+  switch (bc.format) {
+    case BarcodeFormat.code128:
+      return parseCode128(bc.rawValue!);
+    default:
+      return [const SizedBox.shrink()];
+  }
+}
+
+List<Widget> parseCode128(String rawValue) {
+  if (rawValue.startsWith("]C1")) {
+    var decoder = GS1Decoder(GS1Config.create(fnc1: "]C1", gs: ""));
+    var result = decoder.decodeGS1Barcode(gs1);
+    var data = result.data.map(
+        (e) => Text("${e.ai.description} \n ID: ${e.ai.id} Value: ${e.value}"));
+    var errors = result.error.map((e) =>
+        Text("${e.error.name} \n ${"${e.ai?.id ?? "Rest"}:"}${e.restGs1}"));
+
+    return [
+      const Text(
+        "Typ: GS1",
+        style: TextStyle(fontSize: 20),
+      ),
+      const Text(
+        "Data:",
+        style: TextStyle(fontSize: 20),
+      ),
+      ...data,
+      const Text(
+        "Errors",
+        style: TextStyle(fontSize: 20),
+      ),
+      ...errors,
+    ];
+  } else {
+    return [const SizedBox.shrink()];
+  }
+}
+
+class Test extends StatelessWidget {
+  final Function callback;
+  const Test(this.callback, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mobile Scanner')),
+      body: MobileScanner(
+        controller: MobileScannerController(
+          facing: CameraFacing.back,
+          torchEnabled: false,
+          // returnImage: true,
+        ),
+        onDetect: (barcode, args) {
+          if (barcode.rawValue == null) {
+            debugPrint('Failed to scan Barcode');
+          } else {
+            Future.delayed(Duration.zero, () {
+              Navigator.popUntil(context, (route) => route.isFirst);
+              ;
+            });
+            callback(barcode);
+          }
+        },
+      ),
     );
   }
 }
