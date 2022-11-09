@@ -86,8 +86,8 @@ List<Widget> getBarcodeParsingResult(Barcode bc) {
   }
 }
 
-List<Widget> parseCode128(String rawValue) {
-  if (rawValue.startsWith("]C1")) {
+List<Widget> parseCode128(String gs1) {
+  if (gs1.startsWith("]C1")) {
     var decoder = GS1Decoder(GS1Config.create(fnc1: "]C1", gs: ""));
     var result = decoder.decodeGS1Barcode(gs1);
     var data = result.data.map(
